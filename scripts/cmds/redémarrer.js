@@ -3,7 +3,7 @@ const nix = {
   version: "1.0.0",
   aliases: ["restart"],
   description: "Redémarre le bot",
-  author: "Gnande",
+  author: "Kyo soma",
   prefix: true,
   category: "system",
   type: "admin",

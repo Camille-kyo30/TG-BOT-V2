@@ -4,35 +4,44 @@ const path = require('path');
 
 const nix = {
   name: "cmd",
-  version: "1.0.1",
-  aliases: [],
-  description: "Installe ou télécharge une nouvelle commande via un lien ou du texte.",
+  version: "1.0.4",
   author: "Camille",
-  prefix: true,
+  countDown: 5,
+  role: 2,
+  description: {
+    en: "Installe ou télécharge une nouvelle commande via un lien ou du texte."
+  },
   category: "admin",
-  type: "admin",
-  cooldown: 5,
-  guide: "/cmd [nom_du_fichier] [url]\nOu répondez à un message contenant du code avec : /cmd [nom_du_fichier]"
+  guide: {
+    en: "/cmd [nom_du_fichier] [url]\nOu répondez à un message contenant du code avec : /cmd [nom_du_fichier]"
+  },
+  aliases: [],
+  prefix: true,
+  type: "admin"
 };
 
 async function onStart({ api, message, event, args }) {
-  const bot = api;
-  const msg = message;
   const fileName = args[0];
 
   if (!fileName) {
-    return msg.reply("⚠️ Veuillez spécifier un nom pour le fichier (ex: test).");
+    return message.reply("⚠️ Veuillez spécifier un nom pour le fichier (ex: test).");
   }
 
   let content = "";
 
   try {
-    // Vérification si l'utilisateur répond à un message (event.reply_to_message)
-    const targetMessage = event.reply_to_message;
+    // Sécurisation maximale de l'accès à reply_to_message pour Telegram
+    // On vérifie event, puis message (le wrapper de GoatBot)
+    let targetMessage = null;
+    if (event && event.reply_to_message) {
+      targetMessage = event.reply_to_message;
+    } else if (message && message.reply_to_message) {
+      targetMessage = message.reply_to_message;
+    }
 
-    if (targetMessage && targetMessage.text) {
+    if (targetMessage && (targetMessage.text || targetMessage.caption)) {
       // Cas 1 : Récupération du texte depuis un message auquel on répond
-      content = targetMessage.text;
+      content = targetMessage.text || targetMessage.caption;
     } 
     else if (args[1] && args[1].startsWith("http")) {
       // Cas 2 : Récupération depuis une URL fournie
@@ -44,7 +53,11 @@ async function onStart({ api, message, event, args }) {
       }
     } 
     else {
-      return msg.reply("⚠️ Vous devez soit répondre à un message contenant du code, soit fournir un lien URL direct (Raw).");
+      return message.reply("⚠️ Vous devez soit répondre à un message contenant du code, soit fournir un lien URL direct (Raw).");
+    }
+
+    if (!content || content.trim() === "") {
+      return message.reply("❌ Le contenu récupéré est vide.");
     }
 
     // Nettoyage du nom de fichier pour éviter les injections de chemin
@@ -57,11 +70,11 @@ async function onStart({ api, message, event, args }) {
     // Écriture du fichier sur le disque en UTF-8
     fs.writeFileSync(filePath, content, 'utf-8');
 
-    return msg.reply(`✅ La commande "${safeFileName}" a été installée avec succès.\n\nNote : Un redémarrage du bot ou une commande de rechargement est nécessaire pour activer ce nouveau fichier.`);
+    return message.reply(`✅ La commande "${safeFileName}" a été installée avec succès.\n\nNote : Un redémarrage du bot est nécessaire pour charger ce nouveau fichier.`);
 
   } catch (error) {
     console.error("Erreur lors de l'exécution de cmd:", error);
-    return msg.reply(`❌ Une erreur est survenue lors de l'installation : ${error.message}`);
+    return message.reply(`❌ Une erreur est survenue lors de l'installation : ${error.message}`);
   }
 }
 
@@ -70,3 +83,4 @@ module.exports = {
   nix, 
   onStart 
 };
+        
